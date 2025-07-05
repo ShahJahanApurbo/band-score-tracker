@@ -235,7 +235,21 @@ export default function HomePage() {
     );
   }
 
-  // Show leaderboard data regardless of authentication status
+  // Show authentication card if user is not logged in
+  if (!user) {
+    return (
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <h1 className="text-xl font-semibold">Welcome</h1>
+        </header>
+        <div className="flex flex-1 flex-col gap-4 p-4 items-center justify-center">
+          <AuthCard />
+        </div>
+      </SidebarInset>
+    );
+  }
 
   return (
     <SidebarInset>

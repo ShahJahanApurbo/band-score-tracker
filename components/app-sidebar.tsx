@@ -1,8 +1,17 @@
-"use client"
+"use client";
 
-import { Home, BookOpen, Headphones, Mic, PenTool, User, LogOut } from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import {
+  Home,
+  BookOpen,
+  Headphones,
+  Mic,
+  PenTool,
+  User,
+  LogOut,
+  LogIn,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Sidebar,
   SidebarContent,
@@ -15,9 +24,9 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarFooter,
-} from "@/components/ui/sidebar"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { useAuth } from "@/hooks/use-auth"
+} from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAuth } from "@/hooks/use-auth";
 
 const navigationItems = [
   {
@@ -25,7 +34,7 @@ const navigationItems = [
     url: "/",
     icon: Home,
   },
-]
+];
 
 const skillItems = [
   {
@@ -52,11 +61,11 @@ const skillItems = [
     icon: PenTool,
     parts: 2,
   },
-]
+];
 
 export function AppSidebar() {
-  const pathname = usePathname()
-  const { user, signOut } = useAuth()
+  const pathname = usePathname();
+  const { user, signOut } = useAuth();
 
   return (
     <Sidebar>
@@ -67,7 +76,9 @@ export function AppSidebar() {
           </div>
           <div className="flex flex-col gap-0.5 leading-none">
             <span className="font-semibold">Band Score Tracker</span>
-            <span className="text-xs text-sidebar-foreground/70">Track your progress</span>
+            <span className="text-xs text-sidebar-foreground/70">
+              Track your progress
+            </span>
           </div>
         </div>
       </SidebarHeader>
@@ -89,7 +100,9 @@ export function AppSidebar() {
                   <div className="text-sm font-medium capitalize truncate">
                     {user.user_metadata?.username || user.email?.split("@")[0]}
                   </div>
-                  <div className="text-xs text-sidebar-foreground/70 truncate">{user.email}</div>
+                  <div className="text-xs text-sidebar-foreground/70 truncate">
+                    {user.email}
+                  </div>
                 </div>
               </div>
             </SidebarGroupContent>
@@ -125,7 +138,9 @@ export function AppSidebar() {
                       <Link href={item.url}>
                         <item.icon />
                         <span>{item.title}</span>
-                        <span className="ml-auto text-xs text-sidebar-foreground/70">{item.parts} parts</span>
+                        <span className="ml-auto text-xs text-sidebar-foreground/70">
+                          {item.parts} parts
+                        </span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -149,7 +164,22 @@ export function AppSidebar() {
         </SidebarFooter>
       )}
 
+      {!user && (
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/">
+                  <LogIn />
+                  <span>Sign In</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      )}
+
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }
