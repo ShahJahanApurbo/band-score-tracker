@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import SkillPage from "@/components/skill-page"
-import { BookOpen } from "lucide-react"
+import EnhancedSkillPage from "@/components/enhanced-skill-page";
+import { BookOpen } from "lucide-react";
 
-const readingParts = ["Multiple Choice Questions", "Gap Fill Exercise", "Matching Headings"]
+const readingParts = ["Part 1", "Part 2", "Part 3"];
 
 export default function ReadingPage() {
   return (
-    <SkillPage
+    <EnhancedSkillPage
       skill={{
         id: "reading",
         name: "Reading",
@@ -16,5 +16,5 @@ export default function ReadingPage() {
         color: "bg-blue-500",
       }}
     />
-  )
+  );
 }

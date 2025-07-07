@@ -11,10 +11,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, TrendingUp, BarChart3, History } from "lucide-react";
+import { Plus, TrendingUp, BarChart3, Users, History } from "lucide-react";
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import ProgressChart from "@/components/progress-chart";
+import MultiUserChart from "@/components/multi-user-chart";
 import PartInputModal from "@/components/part-input-modal";
 import ScoreHistory from "@/components/score-history";
 import SkillStats from "@/components/skill-stats";
@@ -23,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import AuthCard from "@/components/auth-card";
 
-interface SkillPageProps {
+interface MultiUserSkillPageProps {
   skill: {
     id: string;
     name: string;
@@ -33,8 +34,9 @@ interface SkillPageProps {
   };
 }
 
-export default function SkillPage({ skill }: SkillPageProps) {
+export default function MultiUserSkillPage({ skill }: MultiUserSkillPageProps) {
   const [skillData, setSkillData] = useState<any[]>([]);
+  const [allUsersData, setAllUsersData] = useState<any>({});
   const [selectedPart, setSelectedPart] = useState<number | null>(null);
   const [showAddPart, setShowAddPart] = useState(false);
   const [selectedPartForInput, setSelectedPartForInput] = useState<number>(0);
@@ -47,6 +49,7 @@ export default function SkillPage({ skill }: SkillPageProps) {
   useEffect(() => {
     if (user) {
       fetchSkillData();
+      fetchAllUsersData();
     } else if (!authLoading) {
       setLoading(false);
     }
@@ -93,6 +96,84 @@ export default function SkillPage({ skill }: SkillPageProps) {
       toast({
         title: "Error",
         description: "Failed to load skill data",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchAllUsersData = async () => {
+    try {
+      // Fetch all users' data from the database
+      const { data: allScores, error } = await supabase
+        .from("part_scores")
+        .select(
+          `
+          *,
+          profiles:user_id (
+            username,
+            full_name
+          )
+        `
+        )
+        .eq("skill", skill.id)
+        .order("test_date", { ascending: true })
+        .order("part_number", { ascending: true });
+
+      if (error) throw error;
+
+      // Group data by user
+      const userDataMap = new Map();
+
+      allScores?.forEach((score) => {
+        const userId = score.user_id;
+        const username =
+          score.profiles?.username ||
+          score.profiles?.full_name ||
+          `User_${userId.slice(0, 8)}`;
+
+        if (!userDataMap.has(userId)) {
+          userDataMap.set(userId, {
+            username,
+            [skill.id]: [],
+          });
+        }
+
+        const userData = userDataMap.get(userId);
+        let testEntry = userData[skill.id].find(
+          (test: any) => test.date === score.test_date
+        );
+
+        if (!testEntry) {
+          testEntry = {
+            date: score.test_date,
+            parts: new Array(skill.parts.length).fill(null).map((_, index) => ({
+              name: skill.parts[index],
+              score: null,
+            })),
+          };
+          userData[skill.id].push(testEntry);
+        }
+
+        if (score.part_number <= skill.parts.length) {
+          testEntry.parts[score.part_number - 1].score = score.score;
+        }
+      });
+
+      // Convert to the expected format
+      const formattedData: any = {};
+      userDataMap.forEach((userData, userId) => {
+        const username = userData.username.replace(/\s+/g, "_").toLowerCase();
+        formattedData[username] = {
+          [skill.id]: userData[skill.id],
+        };
+      });
+
+      setAllUsersData(formattedData);
+    } catch (error) {
+      console.error("Error fetching all users data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load users comparison data",
         variant: "destructive",
       });
     } finally {
@@ -142,6 +223,13 @@ export default function SkillPage({ skill }: SkillPageProps) {
           <div className="flex items-center gap-2">
             <Icon className="h-5 w-5" />
             <h1 className="text-xl font-semibold">{skill.name}</h1>
+            <Badge
+              variant="secondary"
+              className="bg-blue-500/10 text-blue-700 dark:text-blue-300"
+            >
+              <Users className="h-3 w-3 mr-1" />
+              Multi-User View
+            </Badge>
           </div>
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4">
@@ -169,19 +257,41 @@ export default function SkillPage({ skill }: SkillPageProps) {
         <div className="flex items-center gap-2">
           <Icon className="h-5 w-5" />
           <h1 className="text-xl font-semibold">{skill.name}</h1>
+          <Badge
+            variant="secondary"
+            className="bg-blue-500/10 text-blue-700 dark:text-blue-300"
+          >
+            <Users className="h-3 w-3 mr-1" />
+            Multi-User View
+          </Badge>
         </div>
       </header>
 
       <div className="flex flex-1 flex-col gap-6 p-6">
-        {/* Skill Statistics */}
+        {/* Your Skill Statistics */}
         <SkillStats skillData={skillData} skill={skill} />
 
-        {/* Individual Parts */}
+        {/* Multi-User Comparison Notice */}
+        <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+              <Users className="h-5 w-5" />
+              Multi-User Comparison Mode
+            </CardTitle>
+            <CardDescription>
+              This page shows data from all users so everyone can compare their{" "}
+              {skill.name.toLowerCase()} scores. You can still add your own
+              scores and view your personal progress alongside others.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+
+        {/* Individual Parts for Current User */}
         <Card>
           <CardHeader>
-            <CardTitle>Add Individual Part Scores</CardTitle>
+            <CardTitle>Add Your {skill.name} Scores</CardTitle>
             <CardDescription>
-              Record scores for individual parts as you complete them
+              Record your individual part scores to compare with other users
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -211,7 +321,7 @@ export default function SkillPage({ skill }: SkillPageProps) {
                     </span>
                     {latestScore !== null && (
                       <Badge variant="secondary" className="text-xs">
-                        Latest: {latestScore.toFixed(1)}
+                        Your Latest: {latestScore.toFixed(1)}
                       </Badge>
                     )}
                   </Button>
@@ -221,12 +331,13 @@ export default function SkillPage({ skill }: SkillPageProps) {
           </CardContent>
         </Card>
 
-        {/* Parts Selection for Chart */}
+        {/* Parts Selection for Multi-User Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>View Progress</CardTitle>
+            <CardTitle>Compare Across All Users</CardTitle>
             <CardDescription>
-              Choose a specific part or view overall progress
+              Select a specific part or view overall scores to compare with
+              other users
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -237,18 +348,27 @@ export default function SkillPage({ skill }: SkillPageProps) {
                 className="h-auto p-4 flex flex-col items-start"
               >
                 <span className="font-semibold">Overall</span>
-                <span className="text-sm text-muted-foreground">All parts</span>
+                <span className="text-sm text-muted-foreground">
+                  All parts average
+                </span>
               </Button>
               {skill.parts.map((part, index) => {
-                const allScores = skillData.flatMap((test) =>
-                  test.parts[index]?.score !== null
-                    ? [test.parts[index].score]
-                    : []
+                // Calculate average score across all users for this part
+                const allUserScores = Object.values(allUsersData).flatMap(
+                  (userData: any) => {
+                    const skillDataForUser = userData[skill.id] || [];
+                    return skillDataForUser.flatMap((test: any) =>
+                      test.parts[index]?.score !== null &&
+                      test.parts[index]?.score !== undefined
+                        ? [test.parts[index].score]
+                        : []
+                    );
+                  }
                 );
                 const avgScore =
-                  allScores.length > 0
-                    ? allScores.reduce((sum, score) => sum + score, 0) /
-                      allScores.length
+                  allUserScores.length > 0
+                    ? allUserScores.reduce((sum, score) => sum + score, 0) /
+                      allUserScores.length
                     : 0;
 
                 return (
@@ -265,7 +385,8 @@ export default function SkillPage({ skill }: SkillPageProps) {
                       {part}
                     </span>
                     <Badge variant="secondary" className="text-xs">
-                      Avg: {avgScore > 0 ? avgScore.toFixed(1) : "N/A"}
+                      All Users Avg:{" "}
+                      {avgScore > 0 ? avgScore.toFixed(1) : "N/A"}
                     </Badge>
                   </Button>
                 );
@@ -274,22 +395,36 @@ export default function SkillPage({ skill }: SkillPageProps) {
           </CardContent>
         </Card>
 
-        {/* Progress Chart */}
-        <Tabs defaultValue="progress" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+        {/* Multi-User Charts */}
+        <Tabs defaultValue="multiuser" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="multiuser" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              User Comparison
+            </TabsTrigger>
             <TabsTrigger value="progress" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
-              Progress Over Time
+              Your Progress
             </TabsTrigger>
-            <TabsTrigger value="comparison" className="flex items-center gap-2">
+            <TabsTrigger value="parts" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
-              Part Comparison
+              Your Parts
             </TabsTrigger>
             <TabsTrigger value="history" className="flex items-center gap-2">
               <History className="h-4 w-4" />
-              Score History
+              Your History
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="multiuser">
+            <MultiUserChart
+              allUsersData={allUsersData}
+              skillId={skill.id}
+              selectedPart={selectedPart}
+              partNames={skill.parts}
+              skillName={skill.name}
+            />
+          </TabsContent>
 
           <TabsContent value="progress">
             <ProgressChart
@@ -301,7 +436,7 @@ export default function SkillPage({ skill }: SkillPageProps) {
             />
           </TabsContent>
 
-          <TabsContent value="comparison">
+          <TabsContent value="parts">
             <ProgressChart
               data={skillData}
               selectedPart={null}

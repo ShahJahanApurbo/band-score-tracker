@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import SkillPage from "@/components/skill-page"
-import { Mic } from "lucide-react"
+import EnhancedSkillPage from "@/components/enhanced-skill-page";
+import { Mic } from "lucide-react";
 
-const speakingParts = ["Introduction & Interview", "Individual Long Turn", "Two-way Discussion"]
+const speakingParts = ["Part 1", "Part 2", "Part 3"];
 
 export default function SpeakingPage() {
   return (
-    <SkillPage
+    <EnhancedSkillPage
       skill={{
         id: "speaking",
         name: "Speaking",
@@ -16,5 +16,5 @@ export default function SpeakingPage() {
         color: "bg-orange-500",
       }}
     />
-  )
+  );
 }

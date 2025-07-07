@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import SkillPage from "@/components/skill-page"
-import { Headphones } from "lucide-react"
+import EnhancedSkillPage from "@/components/enhanced-skill-page";
+import { Headphones } from "lucide-react";
 
-const listeningParts = ["Conversations", "Monologues", "Discussions", "Academic Lectures"]
+const listeningParts = ["Part 1", "Part 2", "Part 3", "Part 4"];
 
 export default function ListeningPage() {
   return (
-    <SkillPage
+    <EnhancedSkillPage
       skill={{
         id: "listening",
         name: "Listening",
@@ -16,5 +16,5 @@ export default function ListeningPage() {
         color: "bg-green-500",
       }}
     />
-  )
+  );
 }

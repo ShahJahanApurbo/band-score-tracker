@@ -15,7 +15,7 @@ import { Plus, TrendingUp, BarChart3, History } from "lucide-react";
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import ProgressChart from "@/components/progress-chart";
-import PartInputModal from "@/components/part-input-modal";
+import EnhancedPartInputModal from "@/components/enhanced-part-input-modal";
 import ScoreHistory from "@/components/score-history";
 import SkillStats from "@/components/skill-stats";
 import { supabase } from "@/lib/supabase";
@@ -23,7 +23,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import AuthCard from "@/components/auth-card";
 
-interface SkillPageProps {
+interface QuestionType {
+  id: string;
+  name: string;
+  questionCount: number;
+  score: number;
+}
+
+interface EnhancedSkillPageProps {
   skill: {
     id: string;
     name: string;
@@ -33,7 +40,7 @@ interface SkillPageProps {
   };
 }
 
-export default function SkillPage({ skill }: SkillPageProps) {
+export default function EnhancedSkillPage({ skill }: EnhancedSkillPageProps) {
   const [skillData, setSkillData] = useState<any[]>([]);
   const [selectedPart, setSelectedPart] = useState<number | null>(null);
   const [showAddPart, setShowAddPart] = useState(false);
@@ -100,11 +107,17 @@ export default function SkillPage({ skill }: SkillPageProps) {
     }
   };
 
-  const handleSavePart = async (partData: any) => {
+  const handleSavePart = async (partData: {
+    partNumber: number;
+    score: number;
+    date: string;
+    questionTypes: QuestionType[];
+  }) => {
     if (!user) return;
 
     try {
-      const { error } = await supabase.from("part_scores").insert({
+      // Save the main score
+      const { error: scoreError } = await supabase.from("part_scores").insert({
         user_id: user.id,
         skill: skill.id,
         part_number: partData.partNumber,
@@ -112,13 +125,31 @@ export default function SkillPage({ skill }: SkillPageProps) {
         test_date: partData.date,
       });
 
-      if (error) throw error;
+      if (scoreError) throw scoreError;
+
+      // Save question types details (we'll need to create a new table for this)
+      // For now, let's store it as JSON in the existing table or create a new table
+      const { error: detailsError } = await supabase
+        .from("part_score_details")
+        .insert({
+          user_id: user.id,
+          skill: skill.id,
+          part_number: partData.partNumber,
+          test_date: partData.date,
+          question_types: partData.questionTypes,
+          final_score: partData.score,
+        });
+
+      // If the details table doesn't exist, we'll ignore this error for now
+      if (detailsError && !detailsError.message.includes("does not exist")) {
+        console.warn("Could not save question type details:", detailsError);
+      }
 
       toast({
         title: "Success",
         description: `${
           skill.parts[partData.partNumber - 1]
-        } score saved successfully!`,
+        } score saved successfully! Final score: ${partData.score.toFixed(1)}`,
       });
 
       fetchSkillData();
@@ -154,7 +185,15 @@ export default function SkillPage({ skill }: SkillPageProps) {
   if (!user) {
     return (
       <SidebarInset>
-        <div className="flex flex-1 items-center justify-center p-4">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <div className="flex items-center gap-2">
+            <Icon className="h-5 w-5" />
+            <h1 className="text-xl font-semibold">{skill.name}</h1>
+          </div>
+        </header>
+        <div className="flex flex-1 flex-col gap-4 p-4">
           <AuthCard />
         </div>
       </SidebarInset>
@@ -172,126 +211,61 @@ export default function SkillPage({ skill }: SkillPageProps) {
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col gap-6 p-6">
-        {/* Skill Statistics */}
-        <SkillStats skillData={skillData} skill={skill} />
-
-        {/* Individual Parts */}
+      <div className="flex flex-1 flex-col gap-4 p-4">
+        {/* Quick Add Section */}
         <Card>
           <CardHeader>
-            <CardTitle>Add Individual Part Scores</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              Add New {skill.name} Score
+            </CardTitle>
             <CardDescription>
-              Record scores for individual parts as you complete them
+              Record scores for different question types and get a weighted
+              average
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {skill.parts.map((part, index) => {
-                const latestScore =
-                  skillData.length > 0
-                    ? skillData[skillData.length - 1]?.parts[index]?.score
-                    : null;
-
-                return (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedPartForInput(index);
-                      setShowAddPart(true);
-                    }}
-                    className="h-auto p-4 flex flex-col items-start gap-2"
-                  >
-                    <div className="flex items-center gap-2 w-full">
-                      <Plus className="h-4 w-4" />
-                      <span className="font-semibold">Part {index + 1}</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground text-left">
-                      {part}
-                    </span>
-                    {latestScore !== null && (
-                      <Badge variant="secondary" className="text-xs">
-                        Latest: {latestScore.toFixed(1)}
-                      </Badge>
-                    )}
-                  </Button>
-                );
-              })}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {skill.parts.map((part, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedPartForInput(index);
+                    setShowAddPart(true);
+                  }}
+                  className="justify-start"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  {part}
+                </Button>
+              ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* Parts Selection for Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>View Progress</CardTitle>
-            <CardDescription>
-              Choose a specific part or view overall progress
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Button
-                variant={selectedPart === null ? "default" : "outline"}
-                onClick={() => setSelectedPart(null)}
-                className="h-auto p-4 flex flex-col items-start"
-              >
-                <span className="font-semibold">Overall</span>
-                <span className="text-sm text-muted-foreground">All parts</span>
-              </Button>
-              {skill.parts.map((part, index) => {
-                const allScores = skillData.flatMap((test) =>
-                  test.parts[index]?.score !== null
-                    ? [test.parts[index].score]
-                    : []
-                );
-                const avgScore =
-                  allScores.length > 0
-                    ? allScores.reduce((sum, score) => sum + score, 0) /
-                      allScores.length
-                    : 0;
-
-                return (
-                  <Button
-                    key={index}
-                    variant={selectedPart === index ? "default" : "outline"}
-                    onClick={() => setSelectedPart(index)}
-                    className="h-auto p-4 flex flex-col items-start"
-                  >
-                    <span className="font-semibold text-left">
-                      Part {index + 1}
-                    </span>
-                    <span className="text-xs text-muted-foreground text-left mb-1">
-                      {part}
-                    </span>
-                    <Badge variant="secondary" className="text-xs">
-                      Avg: {avgScore > 0 ? avgScore.toFixed(1) : "N/A"}
-                    </Badge>
-                  </Button>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Progress Chart */}
-        <Tabs defaultValue="progress" className="space-y-6">
+        {/* Tabs */}
+        <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="progress" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Progress Over Time
+            <TabsTrigger value="overview">
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Overview
             </TabsTrigger>
-            <TabsTrigger value="comparison" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Part Comparison
+            <TabsTrigger value="progress">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Progress
             </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center gap-2">
-              <History className="h-4 w-4" />
-              Score History
+            <TabsTrigger value="history">
+              <History className="h-4 w-4 mr-2" />
+              History
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="progress">
+          <TabsContent value="overview" className="space-y-4">
+            <SkillStats skillData={skillData} skill={skill} />
+          </TabsContent>
+
+          <TabsContent value="progress" className="space-y-4">
             <ProgressChart
               data={skillData}
               selectedPart={selectedPart}
@@ -301,35 +275,25 @@ export default function SkillPage({ skill }: SkillPageProps) {
             />
           </TabsContent>
 
-          <TabsContent value="comparison">
-            <ProgressChart
-              data={skillData}
-              selectedPart={null}
-              partNames={skill.parts}
-              skillName={skill.name}
-              loading={loading}
-              showAllParts={true}
-            />
-          </TabsContent>
-
-          <TabsContent value="history">
+          <TabsContent value="history" className="space-y-4">
             <ScoreHistory
               skillData={skillData}
               skill={skill}
               onDataUpdate={fetchSkillData}
-              userId={user.id}
+              userId={user?.id || ""}
             />
           </TabsContent>
         </Tabs>
-
-        <PartInputModal
-          open={showAddPart}
-          onOpenChange={setShowAddPart}
-          skill={skill}
-          partIndex={selectedPartForInput}
-          onSave={handleSavePart}
-        />
       </div>
+
+      {/* Enhanced Part Input Modal */}
+      <EnhancedPartInputModal
+        open={showAddPart}
+        onOpenChange={setShowAddPart}
+        skill={skill}
+        partIndex={selectedPartForInput}
+        onSave={handleSavePart}
+      />
     </SidebarInset>
   );
 }

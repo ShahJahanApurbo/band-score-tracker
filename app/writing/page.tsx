@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import SkillPage from "@/components/skill-page"
-import { PenTool } from "lucide-react"
+import EnhancedSkillPage from "@/components/enhanced-skill-page";
+import { PenTool } from "lucide-react";
 
-const writingParts = ["Task 1 - Report/Letter", "Task 2 - Essay"]
+const writingParts = ["Part 1", "Part 2"];
 
 export default function WritingPage() {
   return (
-    <SkillPage
+    <EnhancedSkillPage
       skill={{
         id: "writing",
         name: "Writing",
@@ -16,5 +16,5 @@ export default function WritingPage() {
         color: "bg-purple-500",
       }}
     />
-  )
+  );
 }
