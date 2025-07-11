@@ -29,6 +29,7 @@ interface EnhancedPartInputModalProps {
     id: string;
     name: string;
     parts: string[];
+    questionTypes?: string[];
   };
   partIndex: number;
   onSave: (partData: {
@@ -246,20 +247,63 @@ export default function EnhancedPartInputModal({
             {/* Add New Question Type */}
             <Card className="border-dashed">
               <CardContent className="pt-6">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Enter question type name..."
-                    value={newQuestionTypeName}
-                    onChange={(e) => setNewQuestionTypeName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && addQuestionType()}
-                  />
-                  <Button
-                    onClick={addQuestionType}
-                    disabled={!newQuestionTypeName.trim()}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Type
-                  </Button>
+                {/* Predefined Question Types (if available) */}
+                {skill.questionTypes && skill.questionTypes.length > 0 && (
+                  <div className="mb-4">
+                    <Label className="text-sm font-medium mb-2 block">
+                      Quick Add - Common Question Types
+                    </Label>
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      {skill.questionTypes.map((questionType) => (
+                        <Button
+                          key={questionType}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const newId = (questionTypes.length + 1).toString();
+                            setQuestionTypes([
+                              ...questionTypes,
+                              {
+                                id: newId,
+                                name: questionType,
+                                questionCount: 0,
+                                score: 0,
+                              },
+                            ]);
+                          }}
+                          disabled={questionTypes.some(
+                            (qt) => qt.name === questionType
+                          )}
+                          className="justify-start text-xs h-8"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          {questionType}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Manual Entry */}
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">
+                    Add Custom Question Type
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter custom question type name..."
+                      value={newQuestionTypeName}
+                      onChange={(e) => setNewQuestionTypeName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && addQuestionType()}
+                    />
+                    <Button
+                      onClick={addQuestionType}
+                      disabled={!newQuestionTypeName.trim()}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

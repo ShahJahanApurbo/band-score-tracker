@@ -37,6 +37,7 @@ interface EnhancedSkillPageProps {
     icon: any;
     parts: string[];
     color: string;
+    questionTypes?: string[];
   };
 }
 
